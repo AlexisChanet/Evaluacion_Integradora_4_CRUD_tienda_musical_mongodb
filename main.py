@@ -19,15 +19,27 @@ def pedir_texto(mensaje):
         print("Error: el campo no puede quedar vacío.")
 
 
-def pedir_entero(mensaje, minimo=0):
+def pedir_rut(mensaje):
+    while True:
+        rut = input(mensaje).strip()
+
+        if "." in rut and "-" in rut:
+            return rut
+
+        print("Error: ingrese el RUT con puntos y guion. Ejemplo: 20.497.593-0")
+
+
+def pedir_entero(mensaje, minimo=0, maximo=100000000):
     while True:
         try:
             numero = int(input(mensaje))
 
-            if numero >= minimo:
+            if numero < minimo:
+                print(f"Error: el número debe ser mayor o igual a {minimo}.")
+            elif numero > maximo:
+                print(f"Error: el número debe ser menor o igual a {maximo}.")
+            else:
                 return numero
-
-            print(f"Error: el número debe ser mayor o igual a {minimo}.")
 
         except ValueError:
             print("Error: debe ingresar un número válido.")
@@ -91,7 +103,7 @@ def pedir_cliente():
 
     nombre = pedir_texto("Nombre del cliente: ")
     apellido = pedir_texto("Apellido del cliente: ")
-    rut = pedir_texto("RUT del cliente: ")
+    rut = pedir_rut("RUT del cliente, ejemplo 20.497.593-0: ")
 
     return {
         "nombre": nombre,
@@ -277,7 +289,18 @@ def listar_productos():
         pausar()
         return
 
-    productos = coleccion.find().sort("artista", 1)
+    # Proyección: se solicitan solo los campos necesarios para este listado.
+    productos = coleccion.find(
+        {},
+        {
+            "titulo_album": 1,
+            "artista": 1,
+            "formato": 1,
+            "precio": 1,
+            "stock": 1,
+            "_id": 0
+        }
+    ).sort("artista", 1)
 
     for producto in productos:
         print("----------------------------------------")
@@ -361,10 +384,37 @@ def buscar_por_precio():
 
         precio = pedir_entero("Ingrese precio de referencia: ", 0)
 
+        # Proyección: se solicitan solo los campos usados en el resumen.
         if opcion == "1":
-            resultados = coleccion.find({"precio": {"$gt": precio}})
+            resultados = coleccion.find(
+                {"precio": {"$gt": precio}},
+                {
+                    "titulo_album": 1,
+                    "artista": 1,
+                    "genero": 1,
+                    "formato": 1,
+                    "precio": 1,
+                    "stock": 1,
+                    "sello_discografico": 1,
+                    "ventas": 1,
+                    "_id": 0
+                }
+            )
         else:
-            resultados = coleccion.find({"precio": {"$lt": precio}})
+            resultados = coleccion.find(
+                {"precio": {"$lt": precio}},
+                {
+                    "titulo_album": 1,
+                    "artista": 1,
+                    "genero": 1,
+                    "formato": 1,
+                    "precio": 1,
+                    "stock": 1,
+                    "sello_discografico": 1,
+                    "ventas": 1,
+                    "_id": 0
+                }
+            )
 
         encontrados = 0
 
@@ -486,8 +536,13 @@ def buscar_por_metodo_pago():
         if metodo is None:
             break
 
+        # Se usa $elemMatch para buscar dentro del array de subdocumentos ventas.
         resultados = coleccion.find({
-            "ventas.metodo_pago": metodo
+            "ventas": {
+                "$elemMatch": {
+                    "metodo_pago": metodo
+                }
+            }
         })
 
         encontrados = 0
